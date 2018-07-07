@@ -3,13 +3,13 @@
 library(keras)
 # install_keras() # if necessary 
 # install_keras(tensorflow="gpu") # if necessary 
+use_condaenv("keras")
 
 mnist <- dataset_mnist()
 x_train <- mnist$train$x
 y_train <- mnist$train$y
 x_test <- mnist$test$x
 y_test <- mnist$test$y
-
 
 # reshape
 x_train <- array_reshape(x_train, c(nrow(x_train), 784))

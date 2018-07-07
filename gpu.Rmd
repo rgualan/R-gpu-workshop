@@ -31,19 +31,19 @@ El compute-0-12 tiene dos GPUs Tesla K40m
 La sintaxis general para enviar un trabajo que requiere del uso del o de los GPU es la siguiente:
 
 ```
-salloc --nodelist=compute-0-12 --exclusive /bin/bash
-ssh compute-0-12
+$ salloc --nodelist=compute-0-12 --exclusive /bin/bash
+$ ssh compute-0-12
 # Correr job
 ```
 
-El parámetro `--exclusive` es opcional, y sólo deber ser utilizado si se pretende reservar todo el nodo, lo que implica bloquear el acceso a los demás usuarios. 
+El parámetro `--exclusive` del comando `salloc` sólo deber ser utilizado si se quiere reservar todo el nodo, lo que implica bloquear el acceso a los demás usuarios. 
 
 
 # 3) Uso básico del GPU
 
 ### 3.1) Obtener información sobre la GPU
 
-Lo primero que se tiene que hacer antes de trabajar con un GPU, es obtener información acerca de la GPU y su actividad.
+Lo primero que se tiene que hacer antes de trabajar con una GPU, es obtener información acerca de la GPU y su actividad.
 
 
 #### Especificaciones de Hardware
@@ -51,8 +51,8 @@ Lo primero que se tiene que hacer antes de trabajar con un GPU, es obtener infor
 CUDA Toolkit ofrece ejemplos (samples) que sirven como referencia y proporcionan utilitarios básicos, como el utilitario *deviceQuery* que proporciona las características de la o las GPUs disponibles en un computador. En el compute-0-12, los ejemplos de CUDA están disponibles en: `/usr/local/cuda/samples/`
 
 ```
-[ronald.gualan@compute-0-12 ~]$ cd /usr/local/cuda/samples/1_Utilities/deviceQuery
-[ronald.gualan@compute-0-12 deviceQuery]$ ./deviceQuery
+[usuario@compute-0-12 ~]$ cd /usr/local/cuda/samples/1_Utilities/deviceQuery
+[usuario@compute-0-12 deviceQuery]$ ./deviceQuery
 ./deviceQuery Starting...
 
  CUDA Device Query (Runtime API) version (CUDART static linking)
@@ -139,13 +139,9 @@ Result = PASS
 
 El toolkit de NVIDIA provee un comando que permite ver información de uso del GPU de una forma análoga al comando *top* en la CPU. 
 
-```{r gtop, engine='bash', eval=FALSE}
-nvidia-smi -q -d UTILIZATION -l 1
 ```
+$ nvidia-smi -q -d UTILIZATION -l 1
 
-La salida del comando anterior cuando los GPUs están desocupados es la siguiente: 
-
-```{r gtop output, engine='bash', eval=FALSE}
 Timestamp                           : Wed Jul  4 17:31:24 2018
 Driver Version                      : 384.90
 
@@ -216,13 +212,9 @@ GPU 00000000:86:00.0
 
 Para obtener mas información acerca de la utilización de la memoria:
 
-```{r gmem, engine='bash', eval=FALSE}
-nvidia-smi -q -d MEMORY -l 1
 ```
+$ nvidia-smi -q -d MEMORY -l 1
 
-La salida cuando los GPUs están desocupados: 
-
-```{r gmem-output, engine='bash', eval=FALSE}
 ==============NVSMI LOG==============
 
 Timestamp                           : Wed Jul  4 17:42:08 2018
@@ -261,7 +253,7 @@ La secuencia básica de operaciones para usar una GPU es:
 * (opcionalmente) ejecutar otro núcleo, que puede acceder a los datos almacenados en la GPU, incluidos los resultados del kernel anterior
 * transferir los resultados de regreso a la CPU
 
-Los cálculos clave se realizan en el *kernel*. Los *kernel* son funciones que codifican las operaciones de cómputo centrales que se ejecutan en paralelo. 
+Los cálculos clave se realizan en *kernel*s, que son funciones que codifican las operaciones de cómputo centrales que se ejecutan en paralelo. 
 
 Como se indicó anteriormente, debemos pasar cualquier dato de la CPU a la GPU y hacer lo mismo a la inversa para obtener el resultado. También necesitaremos asignar memoria en la GPU. Sin embargo, en algunos casos, la transferencia y la asignación se realizarán automáticamente detrás de escena.
 
@@ -300,29 +292,45 @@ A continuación, se hace una prueba simple en la que se compara el rendimiento d
 ```{r, eval=FALSE}
 library(gpuR)
 library(ggplot2)
+library(profvis)
 
-orders <- 256*(2^seq(1:7))
-t1 <- t2 <- c()
-
-for(order in orders) {
-  A = matrix(rnorm(order^2), nrow=order)
-  B = matrix(rnorm(order^2), nrow=order)
-  gpuA = gpuMatrix(A, type="float")
-  gpuB = gpuMatrix(B, type="float")
-  elapsed = system.time({gpuC = gpuA %*% gpuB})[3]
-  t1 = c(t1, elapsed)
-}
+orders <- seq(1000,3000,by=1000)
+#orders <- seq(1000,1600,by=200)
+t1 <- t2 <- sizes <- c()
 
 for(order in orders) {
+  print(order)
   A = matrix(rnorm(order^2), nrow=order) 
-  B = matrix(rnorm(order^2), nrow=order) 
-  elapsed = system.time({C = A %*% B})[3] 
-  t2 = c(t2, elapsed)
+  sizes <- c( sizes, format(object.size(A), units="auto") )
+  gpuA = gpuMatrix(A, type="float")
+
+  elapsed1 <- system.time({C = A %*% A})[3]  # Operacion regular (ejecutada en la CPU) 
+  elapsed2 <- system.time({gpuC = gpuA %*% gpuA})[3] # Operacion acelerada (ejecutada en la GPU)
+
+  t1 = c(t1, elapsed1)
+  t2 = c(t2, elapsed2)
+  
+  rm(A,C,gpuA,gpuC)
+  gc()
 }
 
-df = data.frame(order=orders, speedup=t2/t1)
-ggplot(r, aes(factor(order), speedup)) + 
-  geom_bar(stat="identity", position = "dodge")
+# Armar un dataframe con los resultados de las pruebas del for anterior
+df = data.frame(order = rep(orders,2), 
+                label = rep(paste0(orders," (", sizes, ")"), 2),
+                mode = rep(c("cpu","gpu"),each=4), 
+                elapsed = c(t1,t2))
+
+# Guardar el dataframe (ya que el codigo de este chunk para plotearlo a continuación)
+saveRDS(df, file = "data/gpuMm.rds")
+```
+
+```{r}
+library(ggplot2)
+df <- readRDS(file = "data/gpuMm.rds")
+ggplot(df, aes(x=label, y=elapsed, fill=mode)) +
+  geom_bar(stat="identity", position=position_dodge()) +
+  xlab("Orden (Mem)") + 
+  ylab("Tiempo de ejecucion (seg)") #+ scale_y_log10() 
 
 ```
 
@@ -342,6 +350,7 @@ A continuación se incluye el fragmento de un script que haciendo uso de las lib
 
 ```{r, eval=FALSE}
 library(keras)
+use_condaenv("keras")
 # install_keras(tensorflow="gpu") # Instalar solo la primera vez
 
 # Preparando los datos
@@ -393,6 +402,85 @@ model %>% evaluate(x_test, y_test)
 model %>% predict_classes(x_test)
 
 ```
+
+A continuacion se incluye parte relevante de la salida de los comandos anteriores:
+```
+2018-07-07 14:20:40.077703: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1356] Found device 0 with properties: 
+name: Quadro K1100M major: 3 minor: 0 memoryClockRate(GHz): 0.7055
+pciBusID: 0000:01:00.0
+totalMemory: 1.95GiB freeMemory: 1.63GiB
+2018-07-07 14:20:40.077730: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1406] Ignoring visible gpu device (device: 0, name: Quadro K1100M, pci bus id: 0000:01:00.0, compute capability: 3.0) with Cuda compute capability 3.0. The minimum required Cuda capability is 3.5.
+2018-07-07 14:20:40.077740: I tensorflow/core/common_runtime/gpu/gpu_device.cc:923] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-07-07 14:20:40.077745: I tensorflow/core/common_runtime/gpu/gpu_device.cc:929]      0 
+2018-07-07 14:20:40.077749: I tensorflow/core/common_runtime/gpu/gpu_device.cc:942] 0:   N 
+Train on 48000 samples, validate on 12000 samples
+Epoch 1/30
+48000/48000 [==============================] - 2s 48us/step - loss: 0.4254 - acc: 0.8707 - val_loss: 0.1649 - val_acc: 0.9525
+Epoch 2/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.2029 - acc: 0.9388 - val_loss: 0.1247 - val_acc: 0.9640
+Epoch 3/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.1595 - acc: 0.9529 - val_loss: 0.1097 - val_acc: 0.9680
+Epoch 4/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.1312 - acc: 0.9613 - val_loss: 0.1035 - val_acc: 0.9712
+Epoch 5/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.1158 - acc: 0.9663 - val_loss: 0.0977 - val_acc: 0.9729
+Epoch 6/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.1070 - acc: 0.9685 - val_loss: 0.0968 - val_acc: 0.9750
+Epoch 7/30
+48000/48000 [==============================] - 2s 47us/step - loss: 0.1003 - acc: 0.9714 - val_loss: 0.1028 - val_acc: 0.9728
+Epoch 8/30
+48000/48000 [==============================] - 2s 48us/step - loss: 0.0922 - acc: 0.9734 - val_loss: 0.0931 - val_acc: 0.9762
+Epoch 9/30
+48000/48000 [==============================] - 2s 47us/step - loss: 0.0869 - acc: 0.9750 - val_loss: 0.0921 - val_acc: 0.9775
+Epoch 10/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.0812 - acc: 0.9762 - val_loss: 0.0991 - val_acc: 0.9752
+Epoch 11/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.0803 - acc: 0.9771 - val_loss: 0.0972 - val_acc: 0.9767
+Epoch 12/30
+48000/48000 [==============================] - 2s 47us/step - loss: 0.0739 - acc: 0.9782 - val_loss: 0.0993 - val_acc: 0.9773
+Epoch 13/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.0729 - acc: 0.9785 - val_loss: 0.0883 - val_acc: 0.9798
+Epoch 14/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.0728 - acc: 0.9794 - val_loss: 0.0952 - val_acc: 0.9793
+Epoch 15/30
+48000/48000 [==============================] - 2s 49us/step - loss: 0.0688 - acc: 0.9810 - val_loss: 0.0961 - val_acc: 0.9794
+Epoch 16/30
+48000/48000 [==============================] - 2s 47us/step - loss: 0.0665 - acc: 0.9811 - val_loss: 0.0963 - val_acc: 0.9782
+Epoch 17/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.0631 - acc: 0.9821 - val_loss: 0.0979 - val_acc: 0.9794
+Epoch 18/30
+48000/48000 [==============================] - 2s 47us/step - loss: 0.0613 - acc: 0.9832 - val_loss: 0.0994 - val_acc: 0.9781
+Epoch 19/30
+48000/48000 [==============================] - 2s 47us/step - loss: 0.0617 - acc: 0.9832 - val_loss: 0.0989 - val_acc: 0.9797
+Epoch 20/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.0605 - acc: 0.9839 - val_loss: 0.1024 - val_acc: 0.9794
+Epoch 21/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0601 - acc: 0.9831 - val_loss: 0.1014 - val_acc: 0.9793
+Epoch 22/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0583 - acc: 0.9843 - val_loss: 0.0993 - val_acc: 0.9798
+Epoch 23/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0572 - acc: 0.9845 - val_loss: 0.1028 - val_acc: 0.9787
+Epoch 24/30
+48000/48000 [==============================] - 2s 46us/step - loss: 0.0554 - acc: 0.9852 - val_loss: 0.1001 - val_acc: 0.9788
+Epoch 25/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0525 - acc: 0.9856 - val_loss: 0.1077 - val_acc: 0.9797
+Epoch 26/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0569 - acc: 0.9847 - val_loss: 0.1109 - val_acc: 0.9785
+Epoch 27/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0555 - acc: 0.9854 - val_loss: 0.1078 - val_acc: 0.9787
+Epoch 28/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0507 - acc: 0.9866 - val_loss: 0.1102 - val_acc: 0.9798
+Epoch 29/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0513 - acc: 0.9863 - val_loss: 0.1205 - val_acc: 0.9785
+Epoch 30/30
+48000/48000 [==============================] - 2s 45us/step - loss: 0.0539 - acc: 0.9854 - val_loss: 0.1169 - val_acc: 0.9789
+10000/10000 [==============================] - 0s 25us/step
+
+```
+
+Mientras se entrena el modelo, se visualiza como varian las metrica de perdida y precision (loss and accuracy metrics) en los datasets de test y validacion:
+
+![Metricas del modelo](img/mnist_entrenamiento.png)
 
 
 
