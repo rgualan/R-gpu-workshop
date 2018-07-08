@@ -321,7 +321,7 @@ df = data.frame(order = rep(orders,2),
                 elapsed = c(t1,t2))
 
 # Guardar el dataframe (ya que el codigo de este chunk para plotearlo a continuación)
-saveRDS(df, file = "data/gpuMm.rds")
+# saveRDS(df, file = "data/gpuMm.rds")
 ```
 
 ```{r}

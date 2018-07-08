@@ -26,6 +26,7 @@ library(tfruns)
 #If you have not previously run Keras in R, you will need to install Keras using the install_keras() function.
 # Install Keras if you have not installed before
 # install_keras()
+use_condaenv("keras")
 
 
 sun_spots <- datasets::sunspot.month %>%
