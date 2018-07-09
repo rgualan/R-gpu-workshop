@@ -335,10 +335,77 @@ ggplot(df, aes(x=label, y=elapsed, fill=mode)) +
 ```
 
 
+La aceleración evidenciada en este primer ejemplo es una consecuencia de la posibilidad de ejecutar varias tareas paralelas, tal como se muestra en la siguiente figura:
 
-### 4.2) (Algo intermedio)
+![Multiplicación de matrices](img/matrix-multiplication-without-shared-memory.png)
 
 
+
+
+
+### 4.2) Regresión Linear (OLS, Ordinary Least Squares)
+En estadística, los mínimos cuadrados ordinarios es el nombre de un método para encontrar los parámetros poblacionales en un modelo de regresión lineal. Este método minimiza la suma de las distancias verticales entre las respuestas observadas en la muestra y las respuestas del modelo. El parámetro resultante puede expresarse a través de una fórmula sencilla en notación matricial:
+
+$$
+y = X \beta + \epsilon
+$$
+en donde $y$ y $\epsilon$ son vectores, y $X$ es una matriz de regresores, a la que también se le llama la matriz de diseño. 
+
+La estimación de la ecuación anterior, se denota por:
+
+$$
+\hat{\beta} = (X'X)^{-1}X'y
+$$
+que puede ser re-escrita como:
+$$
+(X'X) \hat{\beta} = X'y
+$$
+donde se debe resolver para $\hat{\beta}$, que en manipulación de matrices, resolver un sistema de ecuaciones es mucho más rápido que invertir una matriz, y frecuentemente evita problemas numéricos presentes alrededor de valores cercanos a cero. 
+
+```{r, eval=FALSE}
+set.seed(123456)
+np <- 300  # número de predictores
+nr <- 1e+05  # número de observaciones
+X <- cbind(5, 1:nr, matrix(rnorm((np - 1) * nr, 0, 0.01), nrow = nr, ncol = (np - 1)))
+beta <- matrix(c(1, 3, runif(np - 1, 0, 0.2)), ncol = 1)
+y <- X %*% beta + matrix(rnorm(nr, 0, 1), nrow = nr, ncol = 1)
+
+# Cálculo en la CPU ligeramente optimizado via la utilización de producto cruzado 
+timeCpu <- system.time({
+  ms2 <- solve(crossprod(X), crossprod(X, y))
+})
+
+# Versión GPU, utilizando clases gpu* que proporcionan punteros de la GPUhacia la memoria de la CPU
+library(gpuR)
+gpuX = gpuMatrix(X, type = "float")  #point GPU to matrix
+gpuy = gpuMatrix(y, type = "float")
+timeGpu <- system.time({
+  ms4 <- gpuR::solve(gpuR::crossprod(gpuX), gpuR::crossprod(gpuX, gpuy))
+})
+
+# Versión GPU (2), utilizando memoria interna del GPU!! (el llamado a vclMatrix es una transferencia)
+vclX = vclMatrix(X, type = "float")  #push matrix to GPU
+vcly = vclMatrix(y, type = "float")
+timeGpu2 <- system.time({
+  ms5 <- gpuR::solve(gpuR::crossprod(vclX), gpuR::crossprod(vclX, vcly))
+})
+
+detach("package:gpuR", unload = TRUE)
+
+# Armar un dataframe con los resultados del bucle
+df = data.frame(calculo = c("CPU", "GPU (gpu*)", "GPU (vcl*)"), 
+                tiempo = c(timeCpu[3], timeGpu[3], timeGpu2[3]) )
+# saveRDS(df, file = "data/gpuOLS.rds")
+```
+
+```{r, eval=FALSE}
+# Plotear los resultados
+df <- readRDS(file = "data/gpuOLS.rds")
+ggplot(df, aes(x=calculo, y=tiempo, fill=calculo)) +
+  geom_bar(stat="identity", position=position_dodge()) +
+  xlab("Tipo de calculo") + 
+  ylab("Tiempo de ejecucion (seg)") #+ scale_y_log10() 
+```
 
 ### 4.3) Ejemplo clásico de reconocimiento de imágenes MNIST
 La base de datos MNIST (Modified National Institute of Standards and Technology database; Base de datos modificada del Instituto Nacional de Estándares y Tecnología), es una gran base de datos de dígitos manuscritos que se usa comúnmente para entrenar sistemas de procesamiento de imágenes. La base de datos también se usa ampliamente para entrenamiento y pruebas en el campo del aprendizaje automático (machine learning).
@@ -507,6 +574,7 @@ Por lo tanto, para algunas tareas y probablemente con un esfuerzo adicional de c
 - Este tutorial está basado en el workshop [GPU computation for statistics](https://github.com/berkeley-scf/gpu-workshop-2016) dictado por la Universidad de Berkeley.
 - El libro Parallel Computing for Data Science por Norman Matloff tiene un material introductorio útil.
 - El [sitio web de NVIDIA](http://devblogs.nvidia.com/parallelforall/) tiene un montón de publicaciones útiles en el blog.
+- La guía de programación [CUDA](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html) 
 - [Suchard et al (2010)](http://www.tandfonline.com/doi/abs/10.1198/jcgs.2010.10016#.U2GTuBUgoWk)
 - [Lee et al (2010](http://www.tandfonline.com/doi/abs/10.1198/jcgs.2010.10039#.U2GT9BUgoWk)
 
