@@ -416,7 +416,7 @@ df = data.frame(order = rep(orders,2),
                 elapsed = c(t1,t2))
 
 # Guardar el dataframe (ya que el codigo de este chunk para plotearlo a continuación)
-saveRDS(df, file = &quot;data/gpuMm.rds&quot;)</code></pre>
+# saveRDS(df, file = &quot;data/gpuMm.rds&quot;)</code></pre>
 <pre class="r"><code>library(ggplot2)
 df &lt;- readRDS(file = &quot;data/gpuMm.rds&quot;)
 ggplot(df, aes(x=label, y=elapsed, fill=mode)) +
