@@ -1,20 +1,30 @@
-Introducción a la Computación con GPUs usando R 
-==================================================================
+---
+title: "Introducción a la Computación con GPUs usando R"
+author: "Ronald Gualán Saavedra"
+date: "2018-07-14"
+site: bookdown::bookdown_site
+output: bookdown::gitbook
+documentclass: book
+biblio-style: apalike
+link-citations: yes
+github-repo: rgualan/R-gpu-workshop
+description: "Revisión de conceptos clave sobre la computación GPGPU, y algunos ejemplos simples de uso de librerías aceleradas por GPU"
+---
 
-# 1) Introducción
+# Introducción
 
 Las GPU (Graphics Processing Units; Unidades de Procesamiento de Gráficos) son unidades de procesamiento diseñadas originalmente para procesar gráficos en una computadora rápidamente. Esto se hace teniendo una gran cantidad de unidades de procesamiento simples para cálculos masivamente paralelos. La idea de la computación de propóstio general en GPU (GPGPU: general purpose GPU computing) es explotar esta capacidad para el cálculo general.
 
 En este tutorial se revisará algunas formas de escribir cálculos implementados en la GPU. El contexto básico de la programación de la GPU es el "paralelismo de datos", en el que se realiza el mismo cálculo para muchos datos. Esto podría ser un cálculo matemático sobre millones de entradas en un vector o una simulación con muchas sub-simulaciones independientes. Algunos ejemplos de paralelismo de datos incluyen la multiplicación de matrices (haciendo la tarea de multiplicación en muchos elementos de matriz separados) o la integración numérica (haciendo una estimación numérica de la integral por partes en muchos intervalos/regiones), así como cálculos estadísticos estándar como estudios de simulación, bootstrapping, random forest, etc. Este tipo de cálculo también se conoce con el nombre "SIMD" (single instruction, multiple data; instrucción única, datos múltiples).
 
 
-### 1.1) Hardware
+## Hardware
 Dos de los principales proveedores de dispositivos GPU son NVIDIA y AMD. *CUDA* es una plataforma para programar en GPUs, específicamente para GPUs NVIDIA, que permite enviar código C/C++/Fortran para su ejecución en la GPU. *OpenCL* es una alternativa que funciona con una variedad más amplia de GPUs. De estos dos, CUDA ha alcanzado mayor popularidad y últimamente está poniendo bastante énfasis en investigación, especialmente en torno a técnicas de deep learning y sus aplicaciones. Algunos ejemplos  [aqui](https://news.developer.nvidia.com/ai-helps-monitor-cancer-treatment/?ncid=--45239). 
 
 Las GPUs tienen muchas unidades de procesamiento pero memoria algo limitada. Además, solo pueden usar datos en su propia memoria, no en la memoria de la CPU, por lo que los datos debe ser transferidos entre la CPU (el *host*) y la GPU (el *dispositivo*). Esta copia puede, en algunos cálculos, constituir una fracción muy grande del cálculo general. Por lo tanto, es mejor crear los datos y/o dejar los datos (para cálculos posteriores) en la GPU cuando sea posible y disminuir al máximo las transferencias.
 
 
-### 1.2) Librerias de R que utilizan computación GPU
+## Librerias de R que utilizan computación GPU
 
 Estas son algunas de las librerías de R útiles para hacer cálculos en la GPU desde R, mismas que se encuentran recopiladas en la sección *Computación paralela: GPUs* de la Vista de Tarea [High Performance Computing](https://cran.r-project.org/web/views/HighPerformanceComputing.html). 
 
@@ -24,7 +34,7 @@ Estas son algunas de las librerías de R útiles para hacer cálculos en la GPU 
 * keras: interfaz hacia [keras](https://keras.io/), una API de redes neuronales de alto nivel, desarrolada para permitir experimentación rápida, con soporte para redes basadas en convolución (convolution based networks ) y redes recurrentes (recurrent networks), y se ejecuta transparentemente tanto en dispositivos CPU como GPU.
 
 
-# 2) Hardware GPU disponible en CEDIA
+# Hardware GPU disponible en CEDIA
 
 El compute-0-12 tiene dos GPUs Tesla K40m
 
@@ -39,14 +49,14 @@ $ ssh compute-0-12
 El parámetro `--exclusive` del comando `salloc` sólo deber ser utilizado si se quiere reservar todo el nodo, lo que implica bloquear el acceso a los demás usuarios. 
 
 
-# 3) Uso básico del GPU
+# Uso básico del GPU
 
-### 3.1) Obtener información sobre la GPU
+## Obtener información sobre la GPU
 
 Lo primero que se tiene que hacer antes de trabajar con una GPU, es obtener información acerca de la GPU y su actividad.
 
 
-#### Especificaciones de Hardware
+### Especificaciones de Hardware
 
 CUDA Toolkit ofrece ejemplos (samples) que sirven como referencia y proporcionan utilitarios básicos, como el utilitario *deviceQuery* que proporciona las características de la o las GPUs disponibles en un computador. En el compute-0-12, los ejemplos de CUDA están disponibles en: `/usr/local/cuda/samples/`
 
@@ -135,7 +145,7 @@ deviceQuery, CUDA Driver = CUDART, CUDA Driver Version = 9.0, CUDA Runtime Versi
 Result = PASS
 ```
 
-#### Observando el rendimiento en la GPU
+### Observando el rendimiento en la GPU
 
 El toolkit de NVIDIA provee un comando que permite ver información de uso del GPU de una forma análoga al comando *top* en la CPU. 
 
@@ -243,7 +253,7 @@ GPU 00000000:86:00.0
 ```
 
 
-### 3.2) Descripción general de la computación en una GPU
+## Descripción general de la computación en una GPU
 
 La secuencia básica de operaciones para usar una GPU es:
 
@@ -258,7 +268,7 @@ Los cálculos clave se realizan en *kernel*s, que son funciones que codifican la
 Como se indicó anteriormente, debemos pasar cualquier dato de la CPU a la GPU y hacer lo mismo a la inversa para obtener el resultado. También necesitaremos asignar memoria en la GPU. Sin embargo, en algunos casos, la transferencia y la asignación se realizarán automáticamente detrás de escena.
 
 
-### 3.3) *Capacidad de cálculo* CUDA
+## *Capacidad de cálculo* CUDA
 
 La *capacidad de cálculo (compute capability)*  se refiere básicamente a la funcionalidad en evolución de la arquitectura NVIDIA. Los números más altos proporcionan más funcionalidad, pero solo se ejecutarán en hardware GPU más nuevo.
 
@@ -269,7 +279,7 @@ Dos ejemplos:
 
 
 
-# 4) Uso de librerías aceleradas por GPU 
+# Uso de librerías aceleradas por GPU 
 
 La idea aquí es usar funcionalidad disponible en R, que oculte los detalles de la implementación de bajo nivel, confiando en la experiencia de otros para codificar de manera eficiente los cálculos estándar en la GPU.
 
@@ -279,7 +289,7 @@ Vale la pena mencionar que al ser librerías que funcionan sobre hardware "espec
 * *Controladores de GPU*, que normalmente se instala en conjunto con el Toolkit.
 
 
-### 4.1) Operaciones de álgebra lineal
+## Operaciones de álgebra lineal
 
 Comenzaremos con un uso de alto nivel de la GPU simplemente llamando a rutinas de álgebra lineal que usen la GPU. Dada la naturaleza numérica de la mayoría de las aplicaciones R, es natural que existan paquetes desarrollados como interfaz entre R y GPU. Varios paquetes R ocultan los detalles de la implementación de la GPU y permiten realizar operaciones vectoriales y matriciales, incluido el álgebra lineal, utilizando código R estándar. En algunos casos, sobrecargan las funciones R habituales de modo que simplemente puede llamar a una función del mismo nombre que en la base R.
 
@@ -343,7 +353,7 @@ La aceleración evidenciada en este primer ejemplo es una consecuencia de la pos
 
 
 
-### 4.2) Regresión Linear (OLS, Ordinary Least Squares)
+## Regresión Linear (OLS, Ordinary Least Squares)
 En estadística, los mínimos cuadrados ordinarios es el nombre de un método para encontrar los parámetros poblacionales en un modelo de regresión lineal. Este método minimiza la suma de las distancias verticales entre las respuestas observadas en la muestra y las respuestas del modelo. El parámetro resultante puede expresarse a través de una fórmula sencilla en notación matricial:
 
 $$
@@ -407,7 +417,7 @@ ggplot(df, aes(x=calculo, y=tiempo, fill=calculo)) +
   ylab("Tiempo de ejecucion (seg)") #+ scale_y_log10() 
 ```
 
-### 4.3) Ejemplo clásico de reconocimiento de imágenes MNIST
+## Ejemplo clásico de reconocimiento de imágenes MNIST
 La base de datos MNIST (Modified National Institute of Standards and Technology database; Base de datos modificada del Instituto Nacional de Estándares y Tecnología), es una gran base de datos de dígitos manuscritos que se usa comúnmente para entrenar sistemas de procesamiento de imágenes. La base de datos también se usa ampliamente para entrenamiento y pruebas en el campo del aprendizaje automático (machine learning).
 
 ![Imágenes de muestra del conjunto de datos de prueba MNIST.](img/MnistExamples.png)
@@ -551,9 +561,9 @@ Mientras se entrena el modelo, se visualiza como varian las metrica de perdida y
 
 
 
-# 5) Comentarios finales
+# Comentarios finales
 
-### 5.1) Algunos pensamientos sobre la mejora de la velocidad computacional
+## Algunos pensamientos sobre la mejora de la velocidad computacional
 
 [Suchard et al (2010)](http://www.tandfonline.com/doi/abs/10.1198/jcgs.2010.10016#.U2GTuBUgoWk) y  [Lee et al (2010)](http://www.tandfonline.com/doi/abs/10.1198/jcgs.2010.10039#.U2GT9BUgoWk) hablan sobre el uso de GPU en estadística. Las aceleraciones que reportan llegan a 120 y 500 veces la velocidad de un único núcleo de CPU, respectivamente. Algunas de las razones por las cuales estas aceleraciones son tan impresionantes son:
 
@@ -570,7 +580,8 @@ Mientras se entrena el modelo, se visualiza como varian las metrica de perdida y
 Por lo tanto, para algunas tareas y probablemente con un esfuerzo adicional de codificación, se puede conseguir aceleraciones de 100-200 veces en comparación con un solo núcleo de CPU.
 
 
-## 6) Algunas referencias
+# Referencias
+
 - Este tutorial está basado en el workshop [GPU computation for statistics](https://github.com/berkeley-scf/gpu-workshop-2016) dictado por la Universidad de Berkeley.
 - El libro Parallel Computing for Data Science por Norman Matloff tiene un material introductorio útil.
 - El [sitio web de NVIDIA](http://devblogs.nvidia.com/parallelforall/) tiene un montón de publicaciones útiles en el blog.
