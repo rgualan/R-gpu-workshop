@@ -1,7 +1,7 @@
 ---
 title: "Introducción a la Computación con GPUs usando R"
 author: "Ronald Gualán Saavedra"
-date: "2018-07-14"
+date: "2018-07-14" # Sys.Date()
 site: bookdown::bookdown_site
 output: bookdown::gitbook
 documentclass: book
@@ -19,7 +19,7 @@ En este tutorial se revisará algunas formas de escribir cálculos implementados
 
 
 ## Hardware
-Dos de los principales proveedores de dispositivos GPU son NVIDIA y AMD. *CUDA* es una plataforma para programar en GPUs, específicamente para GPUs NVIDIA, que permite enviar código C/C++/Fortran para su ejecución en la GPU. *OpenCL* es una alternativa que funciona con una variedad más amplia de GPUs. De estos dos, CUDA ha alcanzado mayor popularidad y últimamente está poniendo bastante énfasis en investigación, especialmente en torno a técnicas de deep learning y sus aplicaciones. Algunos ejemplos  [aqui](https://news.developer.nvidia.com/ai-helps-monitor-cancer-treatment/?ncid=--45239). 
+Dos de los principales proveedores de dispositivos GPU son NVIDIA y AMD. *CUDA* es una plataforma para programar en GPUs, específicamente para GPUs NVIDIA, que permite enviar código C/C++/Fortran para su ejecución en la GPU. *OpenCL* es una alternativa que funciona con una variedad más amplia de GPUs. De estos dos, CUDA ha alcanzado mayor popularidad y últimamente está poniendo bastante énfasis en investigación, especialmente en torno a técnicas de deep learning y sus aplicaciones. Algunos ejemplos  [aqui](https://news.developer.nvidia.com/). 
 
 Las GPUs tienen muchas unidades de procesamiento pero memoria algo limitada. Además, solo pueden usar datos en su propia memoria, no en la memoria de la CPU, por lo que los datos debe ser transferidos entre la CPU (el *host*) y la GPU (el *dispositivo*). Esta copia puede, en algunos cálculos, constituir una fracción muy grande del cálculo general. Por lo tanto, es mejor crear los datos y/o dejar los datos (para cálculos posteriores) en la GPU cuando sea posible y disminuir al máximo las transferencias.
 
