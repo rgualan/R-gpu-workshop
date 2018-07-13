@@ -13,30 +13,30 @@ description: "Revisión de conceptos clave sobre la computación GPGPU, y alguno
 
 # Introducción
 
-Las GPU (Graphics Processing Units; Unidades de Procesamiento de Gráficos) son unidades de procesamiento diseñadas originalmente para procesar gráficos en una computadora rápidamente. Esto se hace teniendo una gran cantidad de unidades de procesamiento simples para cálculos masivamente paralelos. La idea de la computación de propóstio general en GPU (GPGPU: general purpose GPU computing) es explotar esta capacidad para el cálculo general.
+Las GPU (Graphics Processing Units; Unidades de Procesamiento de Gráficos) son unidades de procesamiento diseñadas originalmente para procesar gráficos en una computadora rápidamente. Esto se hace teniendo una gran cantidad de unidades de procesamiento simples para cálculos masivamente paralelos. La idea de la computación de propósito general en GPU (GPGPU: general purpose GPU computing) es explotar esta capacidad para el cálculo general.
 
 En este tutorial se revisará algunas formas de escribir cálculos implementados en la GPU. El contexto básico de la programación de la GPU es el "paralelismo de datos", en el que se realiza el mismo cálculo para muchos datos. Esto podría ser un cálculo matemático sobre millones de entradas en un vector o una simulación con muchas sub-simulaciones independientes. Algunos ejemplos de paralelismo de datos incluyen la multiplicación de matrices (haciendo la tarea de multiplicación en muchos elementos de matriz separados) o la integración numérica (haciendo una estimación numérica de la integral por partes en muchos intervalos/regiones), así como cálculos estadísticos estándar como estudios de simulación, bootstrapping, random forest, etc. Este tipo de cálculo también se conoce con el nombre "SIMD" (single instruction, multiple data; instrucción única, datos múltiples).
 
 
 ## Hardware
-Dos de los principales proveedores de dispositivos GPU son NVIDIA y AMD. *CUDA* es una plataforma para programar en GPUs, específicamente para GPUs NVIDIA, que permite enviar código C/C++/Fortran para su ejecución en la GPU. *OpenCL* es una alternativa que funciona con una variedad más amplia de GPUs. De estos dos, CUDA ha alcanzado mayor popularidad y últimamente está poniendo bastante énfasis en investigación, especialmente en torno a técnicas de deep learning y sus aplicaciones. Algunos ejemplos  [aqui](https://news.developer.nvidia.com/). 
+Dos de los principales proveedores de dispositivos GPU son NVIDIA y AMD. *CUDA* es una plataforma para programar en GPUs, específicamente para GPUs NVIDIA, que permite enviar código C/C++/Fortran para su ejecución en la GPU. *OpenCL* es una alternativa que funciona con una variedad más amplia de GPUs. De estos dos, CUDA ha alcanzado mayor popularidad y últimamente está poniendo bastante énfasis en investigación, especialmente en torno a técnicas de deep learning y sus aplicaciones. Algunos ejemplos  [aquí](https://news.developer.nvidia.com/). 
 
 Las GPUs tienen muchas unidades de procesamiento pero memoria algo limitada. Además, solo pueden usar datos en su propia memoria, no en la memoria de la CPU, por lo que los datos debe ser transferidos entre la CPU (el *host*) y la GPU (el *dispositivo*). Esta copia puede, en algunos cálculos, constituir una fracción muy grande del cálculo general. Por lo tanto, es mejor crear los datos y/o dejar los datos (para cálculos posteriores) en la GPU cuando sea posible y disminuir al máximo las transferencias.
 
 
-## Librerias de R que utilizan computación GPU
+## Librerías de R que utilizan computación GPU
 
 Estas son algunas de las librerías de R útiles para hacer cálculos en la GPU desde R, mismas que se encuentran recopiladas en la sección *Computación paralela: GPUs* de la Vista de Tarea [High Performance Computing](https://cran.r-project.org/web/views/HighPerformanceComputing.html). 
 
 * gpuR: ofrece funciones habilitadas para GPU, nuevas clases gpu\* y vcl\* para envolver objetos típicos de R (ej: vector, matriz) que reflejan la sintaxis R típica sin la necesidad de conocer OpenCL.
 * cudaBayesreg: paquete que implementa el rhierLinearModel del paquete bayesm utilizando el lenguaje y las herramientas CUDA de nVidia para proporcionar un análisis estadístico de alto rendimiento de voxels fMRI.
 * tensorflow: proporciona acceso a la API completa de TensorFlow desde R que permite el cálculo numérico utilizando gráficos de flujo de datos. La arquitectura flexible permite a los usuarios implementar cálculos en una o más CPU o GPU en un pc, servidor o dispositivo móvil con una sola API.
-* keras: interfaz hacia [keras](https://keras.io/), una API de redes neuronales de alto nivel, desarrolada para permitir experimentación rápida, con soporte para redes basadas en convolución (convolution based networks ) y redes recurrentes (recurrent networks), y se ejecuta transparentemente tanto en dispositivos CPU como GPU.
+* keras: interfaz hacia [keras](https://keras.io/), una API de redes neuronales de alto nivel, desarrollada para permitir experimentación rápida, con soporte para redes basadas en convolución (convolution based networks ) y redes recurrentes (recurrent networks), y se ejecuta transparentemente tanto en dispositivos CPU como GPU.
 
 
 # Hardware GPU disponible en CEDIA
 
-El compute-0-12 tiene dos GPUs Tesla K40m
+El `compute-0-12` tiene dos GPUs Tesla K40m.
 
 La sintaxis general para enviar un trabajo que requiere del uso del o de los GPU es la siguiente:
 
@@ -46,7 +46,7 @@ $ ssh compute-0-12
 # Correr job
 ```
 
-El parámetro `--exclusive` del comando `salloc` sólo deber ser utilizado si se quiere reservar todo el nodo, lo que implica bloquear el acceso a los demás usuarios. 
+El parámetro `--exclusive` del comando `salloc` solo deber ser utilizado si se quiere reservar todo el nodo, lo que implica bloquear el acceso a los demás usuarios. 
 
 
 # Uso básico del GPU
@@ -58,7 +58,7 @@ Lo primero que se tiene que hacer antes de trabajar con una GPU, es obtener info
 
 ### Especificaciones de Hardware
 
-CUDA Toolkit ofrece ejemplos (samples) que sirven como referencia y proporcionan utilitarios básicos, como el utilitario *deviceQuery* que proporciona las características de la o las GPUs disponibles en un computador. En el compute-0-12, los ejemplos de CUDA están disponibles en: `/usr/local/cuda/samples/`
+CUDA Toolkit ofrece ejemplos (samples) que sirven como referencia y proporcionan utilitarios básicos, como el utilitario `deviceQuery` que proporciona las características de la o las GPUs disponibles en un computador. En el compute-0-12, los ejemplos de CUDA están disponibles en: `/usr/local/cuda/samples/`
 
 ```
 [usuario@compute-0-12 ~]$ cd /usr/local/cuda/samples/1_Utilities/deviceQuery
@@ -220,7 +220,7 @@ GPU 00000000:86:00.0
 
 ```
 
-Para obtener mas información acerca de la utilización de la memoria:
+Para obtener más información acerca de la utilización de la memoria:
 
 ```
 $ nvidia-smi -q -d MEMORY -l 1
@@ -283,7 +283,7 @@ Dos ejemplos:
 
 La idea aquí es usar funcionalidad disponible en R, que oculte los detalles de la implementación de bajo nivel, confiando en la experiencia de otros para codificar de manera eficiente los cálculos estándar en la GPU.
 
-Vale la pena mencionar que al ser librerías que funcionan sobre hardware "especial", estas librerías solo pueden ser instaladas si el equipo de cómputo dispone de dicho hardware, y de los requisitos de software asociados con el mismo. Para el caso de GPUs NVIDIA, como las que están disponibles en el nodo compute-0-12, estos requisitos de software son:
+Vale la pena mencionar que al ser librerías que funcionan sobre hardware "especial", estas librerías solo pueden ser instaladas si el equipo de cómputo dispone de dicho hardware, y de los requisitos de software asociados con el mismo. Para el caso de GPUs NVIDIA, como las que están disponibles en el nodo `compute-0-12`, estos requisitos de software son:
 
 * *CUDA Toolkit*, que es la plataforma de computación paralela desarrollada por NVIDIA para computación general en unidades de procesamiento gráfico (GPU). 
 * *Controladores de GPU*, que normalmente se instala en conjunto con el Toolkit.
@@ -422,7 +422,7 @@ La base de datos MNIST (Modified National Institute of Standards and Technology 
 
 ![Imágenes de muestra del conjunto de datos de prueba MNIST.](img/MnistExamples.png)
 
-A continuación se incluye el fragmento de un script que haciendo uso de las librerías [*keras*](https://keras.rstudio.com/) y [*tensorflow*](https://www.tensorflow.org/), entrena un modelo de clasificación de imágenes, que hace uso de las capacidades de la GPU. Hay que mencionar que estas librerías funcionan tanto sobre CPUs como GPUs. Para hacer uso de tensorflow con capacidades GPU, fue necesario instalar la librería NVIDIA CUDA Deep Neural Network ([cuDNN](https://developer.nvidia.com/cudnn)). 
+A continuación se incluye el fragmento de un script que haciendo uso de las librerías [*keras*](https://keras.rstudio.com/) y [*tensorflow*](https://www.tensorflow.org/), entrena un modelo de clasificación de imágenes, que hace uso de las capacidades de la GPU. Hay que mencionar que estas librerías funcionan tanto sobre CPUs como GPUs. Para hacer uso de tensorflow con capacidades GPU, es necesario instalar la librería NVIDIA CUDA Deep Neural Network ([cuDNN](https://developer.nvidia.com/cudnn)). 
 
 
 ```{r, eval=FALSE}
@@ -480,7 +480,7 @@ model %>% predict_classes(x_test)
 
 ```
 
-A continuacion se incluye parte relevante de la salida de los comandos anteriores:
+A continuación se incluye parte relevante de la salida de los comandos anteriores:
 ```
 2018-07-07 14:20:40.077703: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1356] Found device 0 with properties: 
 name: Quadro K1100M major: 3 minor: 0 memoryClockRate(GHz): 0.7055
@@ -555,7 +555,7 @@ Epoch 30/30
 
 ```
 
-Mientras se entrena el modelo, se visualiza como varian las metrica de perdida y precision (loss and accuracy metrics) en los datasets de test y validacion:
+Mientras se entrena el modelo, se visualiza como varían las métricas de pérdida y precisión (loss and accuracy metrics) en los datasets de test y validación:
 
 ![Metricas del modelo](img/mnist_entrenamiento.png)
 
