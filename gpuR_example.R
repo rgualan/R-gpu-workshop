@@ -5,8 +5,8 @@ library(ggplot2)
 # entre la operacion regular (usando el CPU)
 # y la operacion implementada por la libreria gpuR (usando la GPU)
 
-#orders <- seq(1000,4000,by=1000)
-orders <- seq(1000,2000,by=500)
+set.seed(123456) # Por reproductibilidad
+orders <- seq(1000,3000,by=500)
 t1 <- t2 <- t3 <- sizes <- c()
 
 for(order in orders) {
@@ -43,6 +43,7 @@ df = data.frame(order = rep(orders,3),
 
 # Guardar el dataframe (ya que el codigo de este chunk para plotearlo a continuación)
 saveRDS(df, file = "data/gpuMm.rds")
+
 
 # Plotear los resultados
 ggplot(df, aes(x=label, y=elapsed, fill=mode)) +

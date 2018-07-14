@@ -31,7 +31,7 @@ Estas son algunas de las librerías de R útiles para hacer cálculos en la GPU 
 * gpuR: ofrece funciones habilitadas para GPU, nuevas clases gpu\* y vcl\* para envolver objetos típicos de R (ej: vector, matriz) que reflejan la sintaxis R típica sin la necesidad de conocer OpenCL.
 * cudaBayesreg: paquete que implementa el rhierLinearModel del paquete bayesm utilizando el lenguaje y las herramientas CUDA de nVidia para proporcionar un análisis estadístico de alto rendimiento de voxels fMRI.
 * tensorflow: proporciona acceso a la API completa de TensorFlow desde R que permite el cálculo numérico utilizando gráficos de flujo de datos. La arquitectura flexible permite a los usuarios implementar cálculos en una o más CPU o GPU en un pc, servidor o dispositivo móvil con una sola API.
-* keras: interfaz hacia [keras](https://keras.io/), una API de redes neuronales de alto nivel, desarrollada para permitir experimentación rápida, con soporte para redes basadas en convolución (convolution based networks ) y redes recurrentes (recurrent networks), y se ejecuta transparentemente tanto en dispositivos CPU como GPU.
+* keras: interfaz hacia [keras](https://keras.io/), una API de redes neuronales de alto nivel, desarrollada para permitir experimentación rápida, con soporte para redes basadas en convolución (convolution based networks) y redes recurrentes (recurrent networks), y se ejecuta transparentemente tanto en dispositivos CPU como GPU.
 
 
 # Hardware GPU disponible en CEDIA
@@ -300,38 +300,42 @@ Algunos paquetes en este contexto incluyen: *gpuR*, *gmatrix*, *gputools*. Desaf
 A continuación, se hace una prueba simple en la que se compara el rendimiento de la multiplicación de matrices sobre CPU versus GPU. 
 
 ```{r, eval=FALSE}
-library(gpuR)
-library(ggplot2)
-library(profvis)
-
-orders <- seq(1000,3000,by=1000)
-#orders <- seq(1000,1600,by=200)
-t1 <- t2 <- sizes <- c()
+set.seed(123456) # Por reproductibilidad
+orders <- seq(1000,3000,by=500)
+t1 <- t2 <- t3 <- sizes <- c()
 
 for(order in orders) {
   print(order)
   A = matrix(rnorm(order^2), nrow=order) 
   sizes <- c( sizes, format(object.size(A), units="auto") )
-  gpuA = gpuMatrix(A, type="float")
 
+  # GPU version, GPU pointer to CPU memory!! (gpuMatrix is simply a pointer)
+  gpuA = gpuMatrix(A, type="float") #point GPU to matrix
+  
+  # GPU version, in GPU memory!! (vclMatrix formation is a memory transfer)
+  vclA = vclMatrix(A, type="float") #push matrix to GPU
+
+  print("cpu...")
   elapsed1 <- system.time({C = A %*% A})[3]  # Operacion regular (ejecutada en la CPU) 
+  print("gpu...")
   elapsed2 <- system.time({gpuC = gpuA %*% gpuA})[3] # Operacion acelerada (ejecutada en la GPU)
-
+  print("gpu2...")
+  elapsed3 <- system.time({vclC = vclA %*% vclA})[3] # Operacion acelerada (ejecutada en la GPU)
+  
   t1 = c(t1, elapsed1)
   t2 = c(t2, elapsed2)
+  t3 = c(t3, elapsed3)
   
-  rm(A,C,gpuA,gpuC)
-  gc()
+  # Liberar espacio en memoria:
+  rm(A,C,gpuA,gpuC,vclA,vclC); gc()
 }
 
-# Armar un dataframe con los resultados de las pruebas del for anterior
-df = data.frame(order = rep(orders,2), 
-                label = rep(paste0(orders," (", sizes, ")"), 2),
-                mode = rep(c("cpu","gpu"),each=4), 
-                elapsed = c(t1,t2))
+# Armar un dataframe con los resultados del bucle
+df = data.frame(order = rep(orders,3), 
+                label = rep(paste0(orders," (", sizes, ")"), 3),
+                mode = rep(c("cpu","gpu","gpu-2"),each=length(orders)), 
+                elapsed = c(t1,t2,t3))
 
-# Guardar el dataframe (ya que el codigo de este chunk para plotearlo a continuación)
-# saveRDS(df, file = "data/gpuMm.rds")
 ```
 
 ```{r}
@@ -373,7 +377,7 @@ $$
 donde se debe resolver para $\hat{\beta}$, que en manipulación de matrices, resolver un sistema de ecuaciones es mucho más rápido que invertir una matriz, y frecuentemente evita problemas numéricos presentes alrededor de valores cercanos a cero. 
 
 ```{r, eval=FALSE}
-set.seed(123456)
+set.seed(123456) # Por reproducibilidad
 np <- 300  # número de predictores
 nr <- 1e+05  # número de observaciones
 X <- cbind(5, 1:nr, matrix(rnorm((np - 1) * nr, 0, 0.01), nrow = nr, ncol = (np - 1)))
@@ -405,10 +409,9 @@ detach("package:gpuR", unload = TRUE)
 # Armar un dataframe con los resultados del bucle
 df = data.frame(calculo = c("CPU", "GPU (gpu*)", "GPU (vcl*)"), 
                 tiempo = c(timeCpu[3], timeGpu[3], timeGpu2[3]) )
-# saveRDS(df, file = "data/gpuOLS.rds")
 ```
 
-```{r, eval=FALSE}
+```{r}
 # Plotear los resultados
 df <- readRDS(file = "data/gpuOLS.rds")
 ggplot(df, aes(x=calculo, y=tiempo, fill=calculo)) +
@@ -571,7 +574,7 @@ Mientras se entrena el modelo, se visualiza como varían las métricas de pérdi
 
 * Tareas computacionales que son muy intensas en términos aritméticos pero con acceso limitado a la memoria (ver el artículo de Lee et al.)
 
-* Garantizar que los hilos numerados contundentemente accedan a las ubicaciones de memoria contiguas. Más información [aquí](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#coalesced-access-to-global-memory).
+* Garantizar que los hilos numerados continuamente accedan a las ubicaciones de memoria contiguas. Más información [aquí](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#coalesced-access-to-global-memory).
 
 * Uso cuidadoso de la memoria compartida (compartida entre los hilos en un bloque) en lugar de la memoria principal de la GPU (ver el documento de Suchard et al.); en particular, esto puede evitar el acceso a la memoria no contigua.
 
